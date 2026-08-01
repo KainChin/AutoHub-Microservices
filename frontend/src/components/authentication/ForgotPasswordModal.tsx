@@ -1,105 +1,109 @@
-import React from 'react';
-import { X, Phone, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Phone } from 'lucide-react';
 import { GlassInput } from '../common/GlassInput';
 import { GlassButton } from '../common/GlassButton';
 import { OtpVerification } from './OtpVerification';
 import { ResetPassword } from './ResetPassword';
-import { useForgotPassword } from '../../hooks/useForgotPassword';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onBackToLogin: () => void;
 }
 
 export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   isOpen,
-  onClose
+  onClose,
+  onBackToLogin
 }) => {
-  const {
-    step,
-    phone,
-    setPhone,
-    otp,
-    setOtp,
-    newPassword,
-    setNewPassword,
-    confirmPassword,
-    setConfirmPassword,
-    errors,
-    isSubmitting,
-    handleSendOtp,
-    handleVerifyOtp,
-    handleResetPassword
-  } = useForgotPassword(onClose);
+  const [step, setStep] = useState<'PHONE' | 'OTP' | 'RESET'>('PHONE');
+  const [phone, setPhone] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
+  const handleSendOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone || phone.length < 10) {
+      setError('Vui lòng nhập số điện thoại Việt Nam.');
+      return;
+    }
+    setError('');
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setStep('OTP');
+    }, 500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-[10px] flex items-center justify-center p-4">
-      <div className="relative w-full max-w-[480px] bg-white/[0.08] backdrop-blur-[20px] border border-white/[0.12] rounded-[16px] p-8 shadow-2xl text-slate-100 animate-in fade-in zoom-in-95">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-white">Khôi Phục Mật Khẩu</h3>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:bg-red-600/80 transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="relative w-full max-w-[480px] bg-[#0c101d]/90 backdrop-blur-[20px] border border-white/[0.12] rounded-[16px] p-8 shadow-2xl text-slate-100 animate-in fade-in zoom-in-95">
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 rounded-full bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:bg-red-600/80 transition-all cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+        </button>
 
-        {/* Step 1: Input Phone */}
+        {/* Screen 3: Quên Mật Khẩu */}
         {step === 'PHONE' && (
-          <form onSubmit={handleSendOtp} className="flex flex-col gap-5 pt-2">
-            <GlassInput
-              label="Số Điện Thoại Đã Đăng Ký"
-              required
-              icon={Phone}
-              type="tel"
-              placeholder="0901234567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              error={errors.phone}
-            />
+          <div className="flex flex-col gap-6">
+            <div className="text-center flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-white">Quên mật khẩu</h2>
+              <p className="text-xs text-slate-400">
+                Nhập số điện thoại của bạn để nhận mã xác thực
+              </p>
+            </div>
 
-            <GlassButton type="submit" variant="primary" disabled={isSubmitting} className="w-full py-3.5 mt-2">
-              {isSubmitting ? 'Đang gửi...' : 'Gửi Mã OTP'}
-            </GlassButton>
-          </form>
+            <form onSubmit={handleSendOtp} className="flex flex-col gap-5">
+              <GlassInput
+                label="Số điện thoại"
+                required
+                icon={Phone}
+                type="tel"
+                placeholder="Nhập số điện thoại"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                error={error}
+              />
+
+              <GlassButton type="submit" variant="primary" disabled={isSubmitting} className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-blue-500">
+                {isSubmitting ? 'Đang gửi mã...' : 'Gửi mã OTP'}
+              </GlassButton>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={onBackToLogin}
+                  className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  ← Quay lại đăng nhập
+                </button>
+              </div>
+            </form>
+          </div>
         )}
 
-        {/* Step 2: Input OTP */}
+        {/* Screen 4 Part A: Xác Thực OTP */}
         {step === 'OTP' && (
           <OtpVerification
             phone={phone}
-            otp={otp}
-            error={errors.otp}
             isSubmitting={isSubmitting}
-            onOtpChange={setOtp}
-            onSubmit={handleVerifyOtp}
+            onVerifySuccess={() => setStep('RESET')}
+            onBack={() => setStep('PHONE')}
           />
         )}
 
-        {/* Step 3: Reset Password */}
+        {/* Screen 4 Part B: Đặt Lại Mật Khẩu */}
         {step === 'RESET' && (
           <ResetPassword
-            newPassword={newPassword}
-            confirmPassword={confirmPassword}
-            errors={errors}
-            isSubmitting={isSubmitting}
-            onNewPasswordChange={setNewPassword}
-            onConfirmPasswordChange={setConfirmPassword}
-            onSubmit={handleResetPassword}
+            onSuccess={() => {
+              onClose();
+              onBackToLogin();
+            }}
           />
-        )}
-
-        {/* Step 4: Success Message */}
-        {step === 'SUCCESS' && (
-          <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
-            <CheckCircle2 className="w-12 h-12 text-emerald-400 animate-bounce" />
-            <h4 className="text-base font-bold text-white">Mật Khẩu Đã Độc Đặt Lại!</h4>
-            <p className="text-xs text-slate-400">Bạn có thể dùng mật khẩu mới để đăng nhập ngay.</p>
-          </div>
         )}
       </div>
     </div>

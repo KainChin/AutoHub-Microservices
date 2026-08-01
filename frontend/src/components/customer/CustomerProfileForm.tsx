@@ -1,10 +1,10 @@
 import React from 'react';
-import { User, MapPin } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react';
 import { GlassInput } from '../common/GlassInput';
 import { GlassTextarea } from '../common/GlassTextarea';
-import { PhoneInput } from './PhoneInput';
 import { GenderRadioGroup } from './GenderRadioGroup';
-import { CustomerProfileFooter } from './CustomerProfileFooter';
+import { AvatarUploader } from './AvatarUploader';
+import { GlassButton } from '../common/GlassButton';
 import { CustomerProfile, FormErrors } from '../../types/customer';
 
 interface CustomerProfileFormProps {
@@ -13,7 +13,6 @@ interface CustomerProfileFormProps {
   isSubmitting: boolean;
   onUpdateField: <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => void;
   onSubmit: (e: React.FormEvent) => void;
-  onCancel: () => void;
 }
 
 export const CustomerProfileForm: React.FC<CustomerProfileFormProps> = ({
@@ -21,48 +20,60 @@ export const CustomerProfileForm: React.FC<CustomerProfileFormProps> = ({
   errors,
   isSubmitting,
   onUpdateField,
-  onSubmit,
-  onCancel
+  onSubmit
 }) => {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
-      {/* Field 1: Full Name */}
-      <GlassInput
-        label="1. Họ và Tên Khách Hàng"
-        required
-        icon={User}
-        placeholder="Nhập họ và tên..."
-        value={profile.fullName}
-        onChange={(e) => onUpdateField('fullName', e.target.value)}
-        error={errors.fullName}
-      />
+      {/* 2-Column Grid: Left Avatar Uploader, Right Fields */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        {/* Left Column: Avatar */}
+        <div className="md:col-span-1 flex items-center justify-center pt-2">
+          <AvatarUploader
+            initialUrl={profile.avatarUrl}
+            onAvatarChange={(url) => onUpdateField('avatarUrl', url)}
+          />
+        </div>
 
-      {/* Field 2: Phone */}
-      <PhoneInput
-        value={profile.phone}
-        onChange={(val) => onUpdateField('phone', val)}
-        error={errors.phone}
-      />
+        {/* Right Column: Fields */}
+        <div className="md:col-span-2 flex flex-col gap-4">
+          <GlassInput
+            label="Họ và tên"
+            required
+            icon={UserIcon}
+            placeholder="Nhập họ và tên"
+            value={profile.fullName}
+            onChange={(e) => onUpdateField('fullName', e.target.value)}
+            error={errors.fullName}
+          />
 
-      {/* Field 3: Gender */}
-      <GenderRadioGroup
-        value={profile.gender}
-        onChange={(val) => onUpdateField('gender', val)}
-        error={errors.gender}
-      />
+          <GenderRadioGroup
+            value={profile.gender}
+            onChange={(val) => onUpdateField('gender', val)}
+            error={errors.gender}
+          />
 
-      {/* Field 4: Address */}
-      <GlassTextarea
-        label="4. Địa Chỉ Thường Trú"
-        icon={MapPin}
-        placeholder="Nhập địa chỉ thường trú..."
-        value={profile.address}
-        onChange={(e) => onUpdateField('address', e.target.value)}
-        error={errors.address}
-      />
+          <GlassTextarea
+            label="Địa chỉ thường trú"
+            required
+            placeholder="Nhập địa chỉ thường trú"
+            value={profile.address}
+            onChange={(e) => onUpdateField('address', e.target.value)}
+            error={errors.address}
+          />
+        </div>
+      </div>
 
-      {/* Footer Action Buttons */}
-      <CustomerProfileFooter isSubmitting={isSubmitting} onCancel={onCancel} />
+      {/* Primary Submit Button */}
+      <div className="pt-2">
+        <GlassButton
+          type="submit"
+          variant="primary"
+          disabled={isSubmitting}
+          className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-blue-500"
+        >
+          {isSubmitting ? 'Đang lưu...' : 'Lưu hồ sơ'}
+        </GlassButton>
+      </div>
     </form>
   );
 };

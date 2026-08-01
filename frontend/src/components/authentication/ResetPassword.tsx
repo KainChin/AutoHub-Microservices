@@ -1,55 +1,69 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { GlassInput } from '../common/GlassInput';
 import { GlassButton } from '../common/GlassButton';
-import { FormErrors } from '../../types/customer';
 
 interface ResetPasswordProps {
-  newPassword: string;
-  confirmPassword: string;
-  errors: FormErrors;
-  isSubmitting: boolean;
-  onNewPasswordChange: (val: string) => void;
-  onConfirmPasswordChange: (val: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSuccess: () => void;
 }
 
-export const ResetPassword: React.FC<ResetPasswordProps> = ({
-  newPassword,
-  confirmPassword,
-  errors,
-  isSubmitting,
-  onNewPasswordChange,
-  onConfirmPasswordChange,
-  onSubmit
-}) => {
+export const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 8) {
+      setError('Mật khẩu mới phải từ 8 ký tự.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      onSuccess();
+    }, 600);
+  };
+
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5 pt-2">
-      <GlassInput
-        label="Mật Khẩu Mới"
-        required
-        icon={Lock}
-        type="password"
-        placeholder="Từ 8 ký tự trở lên..."
-        value={newPassword}
-        onChange={(e) => onNewPasswordChange(e.target.value)}
-        error={errors.password}
-      />
+    <div className="flex flex-col gap-6">
+      <div className="text-center flex flex-col gap-1">
+        <h2 className="text-xl font-bold text-white">Đặt lại mật khẩu</h2>
+        <p className="text-xs text-slate-400">Nhập mật khẩu mới của bạn</p>
+      </div>
 
-      <GlassInput
-        label="Xác Nhận Mật Khẩu Mới"
-        required
-        icon={Lock}
-        type="password"
-        placeholder="Nhập lại mật khẩu mới..."
-        value={confirmPassword}
-        onChange={(e) => onConfirmPasswordChange(e.target.value)}
-        error={errors.confirmPassword}
-      />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <GlassInput
+          label="Mật khẩu mới"
+          required
+          icon={Lock}
+          type="password"
+          placeholder="Nhập mật khẩu mới"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
 
-      <GlassButton type="submit" variant="primary" disabled={isSubmitting} className="w-full py-3.5 mt-2">
-        {isSubmitting ? 'Đang cập nhật...' : 'Đặt Lại Mật Khẩu'}
-      </GlassButton>
-    </form>
+        <GlassInput
+          label="Xác nhận mật khẩu"
+          required
+          icon={Lock}
+          type="password"
+          placeholder="Nhập lại mật khẩu mới"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          error={error}
+        />
+
+        <GlassButton type="submit" variant="primary" disabled={isSubmitting} className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-blue-500">
+          {isSubmitting ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
+        </GlassButton>
+      </form>
+    </div>
   );
 };
