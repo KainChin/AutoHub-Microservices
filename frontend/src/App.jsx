@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const GATEWAY_URL = 'http://localhost:5000';
+const GATEWAY_URL = 'http://localhost:5500';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('customers');

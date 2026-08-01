@@ -95,7 +95,7 @@ services:
       context: ./services/api-gateway
     container_name: api_gateway
     ports:
-      - "5000:5000"
+      - "5500:5000"
     environment:
       - PORT=5000
       - CUSTOMER_SERVICE_URL=http://customer-service:5001

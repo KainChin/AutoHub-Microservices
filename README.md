@@ -43,7 +43,7 @@ This project decomposes the monolithic `Car_Dealership` database into **4 Domain
 
 | Microservice | Port | Database Domain Tables | Responsibilities |
 | :--- | :--- | :--- | :--- |
-| **API Gateway** | `5000` | N/A | Reverse proxy, global system health aggregator & route distribution |
+| **API Gateway** | `5500` | N/A | Reverse proxy, global system health aggregator & route distribution |
 | **Customer Service** | `5001` | `Customer` | Customer accounts, profile management, personal information |
 | **Sales & Cars Service** | `5002` | `Cars`, `SalesPerson`, `SalesInvoice` | Vehicle inventory, Sales Reps, Car Purchase & Sales Invoices |
 | **Garage & Repair Service** | `5003` | `Mechanic`, `Service`, `ServiceTicket`, `ServiceMehanic` | Service appointments, mechanic assignments, labor rates & repair tickets |
