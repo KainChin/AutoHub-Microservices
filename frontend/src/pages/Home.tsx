@@ -10,11 +10,15 @@ import { Database, Loader2 } from 'lucide-react';
 export const Home: React.FC = () => {
   const {
     filters,
-    filteredVehicles,
+    totalCount,
+    displayedVehicles,
+    hasMore,
+    remainingCount,
     isLoading,
     isDbConnected,
     handleFilterChange,
-    handleResetFilters
+    handleResetFilters,
+    handleLoadMore
   } = useVehicleFilter();
 
   return (
@@ -52,7 +56,14 @@ export const Home: React.FC = () => {
             onReset={handleResetFilters}
           />
 
-          <VehicleGrid vehicles={filteredVehicles} />
+          <VehicleGrid
+            vehicles={displayedVehicles}
+            totalCount={totalCount}
+            hasMore={hasMore}
+            remainingCount={remainingCount}
+            isLoading={isLoading}
+            onLoadMore={handleLoadMore}
+          />
         </main>
       </div>
 

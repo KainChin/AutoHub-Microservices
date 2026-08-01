@@ -3,11 +3,13 @@ import { Vehicle, FilterState } from '../types/vehicle';
 import { fetchVehiclesFromApi } from '../services/api';
 import { MOCK_VEHICLES } from '../data/vehicles';
 
+const PAGE_SIZE = 6;
+
 const initialFilters: FilterState = {
   model: '',
   priceRange: '',
   color: '',
-  status: '', // All statuses by default so all 6 cars show on UI
+  status: '',
   sortBy: 'newest',
   searchQuery: ''
 };
@@ -15,10 +17,16 @@ const initialFilters: FilterState = {
 export function useVehicleFilter() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
 
-  // Dynamic Fetching from Database API
+  // Reset pagination whenever filter changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filters]);
+
+  // Fetch dynamically from DB API
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -54,6 +62,10 @@ export function useVehicleFilter() {
     setFilters(initialFilters);
   };
 
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  };
+
   const filteredVehicles = useMemo(() => {
     return vehicles.filter((v) => {
       if (filters.model && !v.model.toLowerCase().includes(filters.model.toLowerCase())) {
@@ -80,12 +92,23 @@ export function useVehicleFilter() {
     });
   }, [vehicles, filters]);
 
+  const displayedVehicles = useMemo(() => {
+    return filteredVehicles.slice(0, visibleCount);
+  }, [filteredVehicles, visibleCount]);
+
+  const hasMore = visibleCount < filteredVehicles.length;
+  const remainingCount = Math.max(0, filteredVehicles.length - visibleCount);
+
   return {
     filters,
-    filteredVehicles,
+    totalCount: filteredVehicles.length,
+    displayedVehicles,
+    hasMore,
+    remainingCount,
     isLoading,
     isDbConnected,
     handleFilterChange,
-    handleResetFilters
+    handleResetFilters,
+    handleLoadMore
   };
 }

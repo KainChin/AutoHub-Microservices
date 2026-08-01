@@ -1,12 +1,25 @@
 import React from 'react';
 import { Vehicle } from '../../types/vehicle';
 import { VehicleCard } from './VehicleCard';
+import { LoadMoreButton } from './LoadMoreButton';
 
 interface VehicleGridProps {
   vehicles: Vehicle[];
+  totalCount: number;
+  hasMore: boolean;
+  remainingCount: number;
+  isLoading?: boolean;
+  onLoadMore: () => void;
 }
 
-export const VehicleGrid: React.FC<VehicleGridProps> = ({ vehicles }) => {
+export const VehicleGrid: React.FC<VehicleGridProps> = ({
+  vehicles,
+  totalCount,
+  hasMore,
+  remainingCount,
+  isLoading = false,
+  onLoadMore
+}) => {
   return (
     <div className="flex flex-col gap-6">
       {/* Section Header */}
@@ -15,11 +28,11 @@ export const VehicleGrid: React.FC<VehicleGridProps> = ({ vehicles }) => {
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <span>Tất Cả Xe</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-950/80 text-red-400 border border-red-800/40">
-              {vehicles.length}
+              {totalCount}
             </span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Danh mục xe sang khả dụng tại showroom AutoHub
+            Danh mục xe sang khả dụng tại showroom AutoHub (Đang hiện {vehicles.length} / {totalCount} xe)
           </p>
         </div>
 
@@ -37,11 +50,20 @@ export const VehicleGrid: React.FC<VehicleGridProps> = ({ vehicles }) => {
           Không tìm thấy chiếc xe nào phù hợp với bộ lọc.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {vehicles.map((vehicle) => (
-            <VehicleCard key={vehicle.id} vehicle={vehicle} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vehicles.map((vehicle) => (
+              <VehicleCard key={vehicle.id} vehicle={vehicle} />
+            ))}
+          </div>
+
+          <LoadMoreButton
+            hasMore={hasMore}
+            remainingCount={remainingCount}
+            isLoading={isLoading}
+            onLoadMore={onLoadMore}
+          />
+        </>
       )}
     </div>
   );
