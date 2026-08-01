@@ -35,7 +35,7 @@ async function initDB() {
     dbConnected = true;
     console.log('[Customer Service] Connected to SQL Server DB');
   } catch (err) {
-    console.log('[Customer Service] SQL Server connection failed, using in-memory mode:', err.message);
+    console.log('[Customer Service] SQL Server connection fallback to memory:', err.message);
     dbConnected = false;
   }
 }
@@ -53,15 +53,25 @@ app.get('/health', (req, res) => {
 
 // GET all customers
 app.get('/api/customers', async (req, res) => {
+  const search = req.query.q;
   if (dbConnected && pool) {
     try {
-      const result = await pool.request().query('SELECT custID, custName, phone, sex, cusAddress FROM Customer ORDER BY custID DESC');
+      let query = 'SELECT custID, custName, phone, sex, cusAddress FROM Customer';
+      if (search) {
+        query += ` WHERE custName LIKE N'%${search}%' OR CAST(custID AS VARCHAR) LIKE '%${search}%'`;
+      }
+      query += ' ORDER BY custID DESC';
+      const result = await pool.request().query(query);
       return res.json({ source: 'database', count: result.recordset.length, data: result.recordset });
     } catch (err) {
       console.error('DB query error:', err);
     }
   }
-  res.json({ source: 'memory', count: inMemoryCustomers.length, data: inMemoryCustomers });
+  let filtered = inMemoryCustomers;
+  if (search) {
+    filtered = filtered.filter(c => c.custName.toLowerCase().includes(search.toLowerCase()) || String(c.custID).includes(search));
+  }
+  res.json({ source: 'memory', count: filtered.length, data: filtered });
 });
 
 // GET single customer
@@ -85,16 +95,20 @@ app.get('/api/customers/:id', async (req, res) => {
   res.status(404).json({ error: 'Customer not found' });
 });
 
-// POST new customer
+// POST new customer (Validation included)
 app.post('/api/customers', async (req, res) => {
   const { custID, custName, phone, sex, cusAddress } = req.body;
+  if (!custName || custName.trim() === '') {
+    return res.status(400).json({ error: 'Customer name (custName) is required' });
+  }
+
   const newId = custID || Math.floor(100 + Math.random() * 900);
 
   if (dbConnected && pool) {
     try {
       await pool.request()
         .input('custID', sql.Decimal, newId)
-        .input('custName', sql.NVarChar, custName)
+        .input('custName', sql.NVarChar, custName.trim())
         .input('phone', sql.Decimal, phone || null)
         .input('sex', sql.Char, sex || 'M')
         .input('cusAddress', sql.NVarChar, cusAddress || '')
@@ -105,9 +119,37 @@ app.post('/api/customers', async (req, res) => {
     }
   }
 
-  const newCust = { custID: Number(newId), custName, phone, sex, cusAddress };
+  const newCust = { custID: Number(newId), custName: custName.trim(), phone, sex: sex || 'M', cusAddress: cusAddress || '' };
   inMemoryCustomers.push(newCust);
   res.status(201).json({ message: 'Customer created in memory', data: newCust });
+});
+
+// PUT update customer
+app.put('/api/customers/:id', async (req, res) => {
+  const id = req.params.id;
+  const { custName, phone, sex, cusAddress } = req.body;
+
+  if (dbConnected && pool) {
+    try {
+      await pool.request()
+        .input('custID', sql.Decimal, id)
+        .input('custName', sql.NVarChar, custName)
+        .input('phone', sql.Decimal, phone || null)
+        .input('sex', sql.Char, sex || 'M')
+        .input('cusAddress', sql.NVarChar, cusAddress || '')
+        .query('UPDATE Customer SET custName=@custName, phone=@phone, sex=@sex, cusAddress=@cusAddress WHERE custID=@custID');
+      return res.json({ message: 'Customer updated in DB', custID: id });
+    } catch (err) {
+      console.error('DB update error:', err);
+    }
+  }
+
+  const index = inMemoryCustomers.findIndex(c => c.custID == id);
+  if (index !== -1) {
+    inMemoryCustomers[index] = { ...inMemoryCustomers[index], custName, phone, sex, cusAddress };
+    return res.json({ message: 'Customer updated in memory', data: inMemoryCustomers[index] });
+  }
+  res.status(404).json({ error: 'Customer not found' });
 });
 
 // DELETE customer

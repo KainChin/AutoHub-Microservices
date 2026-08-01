@@ -13,17 +13,25 @@ export default function App() {
   const [tickets, setTickets] = useState([]);
   const [mechanics, setMechanics] = useState([]);
   const [parts, setParts] = useState([]);
-  
-  // Loading states
-  const [loading, setLoading] = useState(true);
+
+  // Search & Filter
+  const [searchCust, setSearchCust] = useState('');
+  const [carFilter, setCarFilter] = useState('');
+
+  // Event Banner
+  const [eventToast, setEventToast] = useState(null);
 
   // Modal States
   const [showCustModal, setShowCustModal] = useState(false);
   const [showCarModal, setShowCarModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   // Form Inputs
   const [custForm, setCustForm] = useState({ custID: '', custName: '', phone: '', sex: 'M', cusAddress: '' });
   const [carForm, setCarForm] = useState({ carID: '', model: '', serialNumber: '', colour: 'White', year: 2024 });
+  const [invoiceForm, setInvoiceForm] = useState({ salesID: 301, carID: '', custID: '', price: 1850000000 });
+  const [ticketForm, setTicketForm] = useState({ custID: '', carID: '' });
 
   useEffect(() => {
     fetchHealth();
@@ -31,6 +39,11 @@ export default function App() {
     const interval = setInterval(fetchHealth, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  const triggerToast = (msg) => {
+    setEventToast(msg);
+    setTimeout(() => setEventToast(null), 5000);
+  };
 
   const fetchHealth = async () => {
     try {
@@ -43,29 +56,25 @@ export default function App() {
   };
 
   const loadAllData = async () => {
-    setLoading(true);
-    await Promise.all([
-      loadCustomers(),
-      loadCars(),
-      loadInvoices(),
-      loadTickets(),
-      loadMechanics(),
-      loadParts()
-    ]);
-    setLoading(false);
+    loadCustomers();
+    loadCars();
+    loadInvoices();
+    loadTickets();
+    loadMechanics();
+    loadParts();
   };
 
-  const loadCustomers = async () => {
+  const loadCustomers = async (query = '') => {
     try {
-      const res = await fetch(`${GATEWAY_URL}/api/customers`);
+      const res = await fetch(`${GATEWAY_URL}/api/customers${query ? `?q=${query}` : ''}`);
       const json = await res.json();
       setCustomers(json.data || []);
     } catch (e) { setCustomers([]); }
   };
 
-  const loadCars = async () => {
+  const loadCars = async (status = '') => {
     try {
-      const res = await fetch(`${GATEWAY_URL}/api/sales/cars`);
+      const res = await fetch(`${GATEWAY_URL}/api/sales/cars${status ? `?status=${status}` : ''}`);
       const json = await res.json();
       setCars(json.data || []);
     } catch (e) { setCars([]); }
@@ -114,6 +123,7 @@ export default function App() {
     setShowCustModal(false);
     setCustForm({ custID: '', custName: '', phone: '', sex: 'M', cusAddress: '' });
     loadCustomers();
+    triggerToast('✅ Customer registered successfully!');
   };
 
   // Add Car
@@ -127,6 +137,50 @@ export default function App() {
     setShowCarModal(false);
     setCarForm({ carID: '', model: '', serialNumber: '', colour: 'White', year: 2024 });
     loadCars();
+    triggerToast('🚘 Vehicle added to showroom inventory!');
+  };
+
+  // Add Sales Invoice
+  const handleAddInvoice = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`${GATEWAY_URL}/api/sales/invoices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(invoiceForm)
+    });
+    const json = await res.json();
+    if (res.ok) {
+      setShowInvoiceModal(false);
+      loadInvoices();
+      loadCars();
+      triggerToast(`📢 Kafka Event: CarSoldEvent emitted for Car #${invoiceForm.carID}!`);
+    } else {
+      alert(json.error || 'Failed to create invoice');
+    }
+  };
+
+  // Create Service Ticket
+  const handleAddTicket = async (e) => {
+    e.preventDefault();
+    await fetch(`${GATEWAY_URL}/api/garage/tickets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ticketForm)
+    });
+    setShowTicketModal(false);
+    loadTickets();
+    loadCars();
+    triggerToast('🔧 Service Ticket created & Car set to InService!');
+  };
+
+  // Complete Service Ticket
+  const handleCompleteTicket = async (id) => {
+    if (confirm(`Complete Service Ticket #${id}?`)) {
+      await fetch(`${GATEWAY_URL}/api/garage/tickets/${id}/complete`, { method: 'PUT' });
+      loadTickets();
+      loadCars();
+      triggerToast(`📢 Kafka Event: ServiceCompletedEvent emitted for Ticket #${id}!`);
+    }
   };
 
   // Delete Customer
@@ -135,13 +189,6 @@ export default function App() {
       await fetch(`${GATEWAY_URL}/api/customers/${id}`, { method: 'DELETE' });
       loadCustomers();
     }
-  };
-
-  // Helper for Status Badge
-  const getBadgeClass = (status) => {
-    if (status === 'HEALTHY' || status === 'UP') return 'badge-healthy';
-    if (status === 'PARTIAL_OUTAGE') return 'badge-partial';
-    return 'badge-down';
   };
 
   const getServiceStatus = (name) => {
@@ -156,7 +203,7 @@ export default function App() {
         <div className="brand">
           <i className="fa-solid fa-car-side logo-icon"></i>
           <div>
-            <h1>Car Dealership Microservices (React 18)</h1>
+            <h1>AutoHub Microservices</h1>
             <span className="subtitle">System Architecture & Service Control Center</span>
           </div>
         </div>
@@ -164,71 +211,69 @@ export default function App() {
           <button onClick={fetchHealth} className="btn-secondary">
             <i className="fa-solid fa-arrows-rotate"></i> Refresh Status
           </button>
-          <span className={`system-status-badge ${getBadgeClass(health.status)}`}>
-            ● SYSTEM {health.status || 'CHECKING'}
+          <span className={`system-status-badge ${health.status === 'HEALTHY' ? 'badge-healthy' : 'badge-partial'}`}>
+            ● SYSTEM {health.status || 'ONLINE'}
           </span>
         </div>
       </header>
 
-      {/* System Architecture Diagram Panel */}
+      {/* Toast Notification Banner */}
+      {eventToast && (
+        <div style={{ background: 'rgba(99, 102, 241, 0.25)', border: '1px solid #6366f1', color: '#fff', padding: '12px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <i className="fa-solid fa-bolt" style={{ color: '#fbbf24' }}></i>
+          <span>{eventToast}</span>
+        </div>
+      )}
+
+      {/* Architecture Topology Diagram */}
       <section className="architecture-section glass-panel">
-        <h2><i className="fa-solid fa-network-wired"></i> Live System Microservices Topology</h2>
+        <h2><i className="fa-solid fa-network-wired"></i> AutoHub Microservices Topology</h2>
         <div className="architecture-grid">
           <div className="arch-node client-node">
             <i className="fa-brands fa-react" style={{ color: '#61dafb' }}></i>
-            <span className="node-title">React 18 Web UI</span>
-            <span className="node-port">Port 8080</span>
+            <span className="node-title">React UI</span>
+            <span className="node-port">:8088</span>
           </div>
           <div className="arch-arrow"><i className="fa-solid fa-chevron-right"></i></div>
           <div className="arch-node gateway-node">
             <i className="fa-solid fa-shield-halved"></i>
             <span className="node-title">API Gateway</span>
-            <span className="node-port">Port 5000</span>
-            <span className="node-status" style={{ color: health.status === 'DOWN' ? '#f87171' : '#34d399' }}>
-              {health.status === 'DOWN' ? 'OFFLINE' : 'ONLINE'}
-            </span>
+            <span className="node-port">:5500</span>
+            <span className="node-status" style={{ color: '#34d399' }}>ONLINE</span>
           </div>
           <div className="arch-arrow"><i className="fa-solid fa-chevron-right"></i></div>
           <div className="services-cluster">
             <div className="arch-node service-node">
               <i className="fa-solid fa-users"></i>
-              <span className="node-title">Customer Service</span>
+              <span className="node-title">Customer Svc</span>
               <span className="node-port">:5001</span>
-              <span className="node-status" style={{ color: getServiceStatus('Customer') === 'ONLINE' ? '#34d399' : '#f87171' }}>
-                {getServiceStatus('Customer')}
-              </span>
+              <span className="node-status" style={{ color: getServiceStatus('Customer') === 'ONLINE' ? '#34d399' : '#f87171' }}>{getServiceStatus('Customer')}</span>
             </div>
             <div className="arch-node service-node">
               <i className="fa-solid fa-file-invoice-dollar"></i>
-              <span className="node-title">Sales Service</span>
+              <span className="node-title">Sales Svc</span>
               <span className="node-port">:5002</span>
-              <span className="node-status" style={{ color: getServiceStatus('Sales') === 'ONLINE' ? '#34d399' : '#f87171' }}>
-                {getServiceStatus('Sales')}
-              </span>
+              <span className="node-status" style={{ color: getServiceStatus('Sales') === 'ONLINE' ? '#34d399' : '#f87171' }}>{getServiceStatus('Sales')}</span>
             </div>
             <div className="arch-node service-node">
               <i className="fa-solid fa-wrench"></i>
-              <span className="node-title">Garage Service</span>
+              <span className="node-title">Garage Svc</span>
               <span className="node-port">:5003</span>
-              <span className="node-status" style={{ color: getServiceStatus('Garage') === 'ONLINE' ? '#34d399' : '#f87171' }}>
-                {getServiceStatus('Garage')}
-              </span>
+              <span className="node-status" style={{ color: getServiceStatus('Garage') === 'ONLINE' ? '#34d399' : '#f87171' }}>{getServiceStatus('Garage')}</span>
             </div>
             <div className="arch-node service-node">
               <i className="fa-solid fa-gears"></i>
-              <span className="node-title">Parts Service</span>
+              <span className="node-title">Parts Svc</span>
               <span className="node-port">:5004</span>
-              <span className="node-status" style={{ color: getServiceStatus('Parts') === 'ONLINE' ? '#34d399' : '#f87171' }}>
-                {getServiceStatus('Parts')}
-              </span>
+              <span className="node-status" style={{ color: getServiceStatus('Parts') === 'ONLINE' ? '#34d399' : '#f87171' }}>{getServiceStatus('Parts')}</span>
             </div>
           </div>
           <div className="arch-arrow"><i className="fa-solid fa-chevron-right"></i></div>
           <div className="arch-node db-node">
             <i className="fa-solid fa-database"></i>
-            <span className="node-title">SQL Server DB</span>
-            <span className="node-port">Port 1433</span>
-            <span className="node-status" style={{ color: '#34d399' }}>SQL Server</span>
+            <span className="node-title">SQL Server</span>
+            <span className="node-port">:1433</span>
+            <span className="node-status" style={{ color: '#34d399' }}>SQL DB</span>
           </div>
         </div>
       </section>
@@ -249,15 +294,24 @@ export default function App() {
         </button>
       </nav>
 
-      {/* Tab Contents */}
+      {/* Tab: Customers */}
       {activeTab === 'customers' && (
         <main className="tab-content active">
           <div className="glass-panel">
             <div className="panel-header">
               <h3><i className="fa-solid fa-users"></i> Customer Microservice Data</h3>
-              <button className="btn-primary" onClick={() => setShowCustModal(true)}>
-                <i className="fa-solid fa-plus"></i> Add Customer
-              </button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Search customer..."
+                  value={searchCust}
+                  onChange={e => { setSearchCust(e.target.value); loadCustomers(e.target.value); }}
+                  style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 14px', borderRadius: '8px' }}
+                />
+                <button className="btn-primary" onClick={() => setShowCustModal(true)}>
+                  <i className="fa-solid fa-plus"></i> Add Customer
+                </button>
+              </div>
             </div>
             <div className="table-responsive">
               <table className="data-table">
@@ -273,7 +327,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {customers.length === 0 ? (
-                    <tr><td colSpan="6" className="loading-cell">No customers found or microservice disconnected</td></tr>
+                    <tr><td colSpan="6" className="loading-cell">No customers found</td></tr>
                   ) : (
                     customers.map(c => (
                       <tr key={c.custID}>
@@ -297,15 +351,28 @@ export default function App() {
         </main>
       )}
 
+      {/* Tab: Cars & Sales */}
       {activeTab === 'cars' && (
         <main className="tab-content active">
           <div className="grid-2col">
             <div className="glass-panel">
               <div className="panel-header">
                 <h3><i className="fa-solid fa-car"></i> Vehicle Inventory</h3>
-                <button className="btn-primary" onClick={() => setShowCarModal(true)}>
-                  <i className="fa-solid fa-plus"></i> Add Vehicle
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    value={carFilter}
+                    onChange={e => { setCarFilter(e.target.value); loadCars(e.target.value); }}
+                    style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px 12px', borderRadius: '8px' }}
+                  >
+                    <option value="">All Status</option>
+                    <option value="Available">Available</option>
+                    <option value="Sold">Sold</option>
+                    <option value="InService">InService</option>
+                  </select>
+                  <button className="btn-primary" onClick={() => setShowCarModal(true)}>
+                    <i className="fa-solid fa-plus"></i> Add Vehicle
+                  </button>
+                </div>
               </div>
               <div className="table-responsive">
                 <table className="data-table">
@@ -315,7 +382,6 @@ export default function App() {
                       <th>Model</th>
                       <th>VIN</th>
                       <th>Colour</th>
-                      <th>Year</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -326,8 +392,7 @@ export default function App() {
                         <td>{c.model}</td>
                         <td><code>{c.serialNumber}</code></td>
                         <td>{c.colour}</td>
-                        <td>{c.year}</td>
-                        <td><span style={{ color: c.Status === 'Available' ? '#34d399' : '#fbbf24' }}>{c.Status}</span></td>
+                        <td><span style={{ color: c.Status === 'Available' ? '#34d399' : c.Status === 'Sold' ? '#fbbf24' : '#60a5fa' }}>{c.Status}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -338,6 +403,9 @@ export default function App() {
             <div className="glass-panel">
               <div className="panel-header">
                 <h3><i className="fa-solid fa-receipt"></i> Sales Invoices</h3>
+                <button className="btn-primary" onClick={() => setShowInvoiceModal(true)}>
+                  <i className="fa-solid fa-plus"></i> Create Invoice
+                </button>
               </div>
               <div className="table-responsive">
                 <table className="data-table">
@@ -345,7 +413,6 @@ export default function App() {
                     <tr>
                       <th>Invoice ID</th>
                       <th>Date</th>
-                      <th>Sales Rep</th>
                       <th>Car ID</th>
                       <th>Cust ID</th>
                       <th>Price</th>
@@ -356,7 +423,6 @@ export default function App() {
                       <tr key={i.invoiceID}>
                         <td><strong>INV-#{i.invoiceID}</strong></td>
                         <td>{i.invoiceDate ? i.invoiceDate.split('T')[0] : 'N/A'}</td>
-                        <td>#{i.salesID}</td>
                         <td>#{i.carID}</td>
                         <td>#{i.custID}</td>
                         <td><strong style={{ color: '#34d399' }}>${Number(i.price).toLocaleString()}</strong></td>
@@ -370,12 +436,16 @@ export default function App() {
         </main>
       )}
 
+      {/* Tab: Garage Services */}
       {activeTab === 'garage' && (
         <main className="tab-content active">
           <div className="grid-2col">
             <div className="glass-panel">
               <div className="panel-header">
                 <h3><i className="fa-solid fa-clipboard-list"></i> Service Tickets</h3>
+                <button className="btn-primary" onClick={() => setShowTicketModal(true)}>
+                  <i className="fa-solid fa-plus"></i> New Ticket
+                </button>
               </div>
               <div className="table-responsive">
                 <table className="data-table">
@@ -383,9 +453,8 @@ export default function App() {
                     <tr>
                       <th>Ticket ID</th>
                       <th>Date Received</th>
-                      <th>Date Returned</th>
-                      <th>Cust ID</th>
-                      <th>Car ID</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -393,9 +462,14 @@ export default function App() {
                       <tr key={t.serviceTicketID}>
                         <td><strong>TICKET-#{t.serviceTicketID}</strong></td>
                         <td>{t.dateReceived ? t.dateReceived.split('T')[0] : 'N/A'}</td>
-                        <td>{t.dateReturned ? t.dateReturned.split('T')[0] : 'In Progress'}</td>
-                        <td>#{t.custID}</td>
-                        <td>#{t.carID}</td>
+                        <td>{t.dateReturned ? <span style={{ color: '#34d399' }}>Completed</span> : <span style={{ color: '#fbbf24' }}>In Progress</span>}</td>
+                        <td>
+                          {!t.dateReturned && (
+                            <button onClick={() => handleCompleteTicket(t.serviceTicketID)} className="btn-secondary" style={{ padding: '4px 8px', color: '#34d399' }}>
+                              Complete
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -405,13 +479,13 @@ export default function App() {
 
             <div className="glass-panel">
               <div className="panel-header">
-                <h3><i className="fa-solid fa-user-gear"></i> Mechanics List</h3>
+                <h3><i className="fa-solid fa-user-gear"></i> Mechanics</h3>
               </div>
               <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Mechanic ID</th>
+                      <th>ID</th>
                       <th>Name</th>
                     </tr>
                   </thead>
@@ -430,6 +504,7 @@ export default function App() {
         </main>
       )}
 
+      {/* Tab: Spare Parts */}
       {activeTab === 'parts' && (
         <main className="tab-content active">
           <div className="glass-panel">
@@ -486,13 +561,6 @@ export default function App() {
                 <input type="text" value={custForm.phone} onChange={e => setCustForm({ ...custForm, phone: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Sex</label>
-                <select value={custForm.sex} onChange={e => setCustForm({ ...custForm, sex: e.target.value })}>
-                  <option value="M">Male (M)</option>
-                  <option value="F">Female (F)</option>
-                </select>
-              </div>
-              <div className="form-group">
                 <label>Address</label>
                 <input type="text" value={custForm.cusAddress} onChange={e => setCustForm({ ...custForm, cusAddress: e.target.value })} />
               </div>
@@ -525,16 +593,62 @@ export default function App() {
                 <label>Serial Number (VIN)</label>
                 <input type="text" value={carForm.serialNumber} onChange={e => setCarForm({ ...carForm, serialNumber: e.target.value })} />
               </div>
-              <div className="form-group">
-                <label>Colour</label>
-                <input type="text" value={carForm.colour} onChange={e => setCarForm({ ...carForm, colour: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Year</label>
-                <input type="number" value={carForm.year} onChange={e => setCarForm({ ...carForm, year: e.target.value })} />
-              </div>
               <div className="modal-footer">
                 <button type="submit" className="btn-primary">Save Vehicle</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Sales Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel">
+            <div className="modal-header">
+              <h3>Create Sales Invoice</h3>
+              <button className="close-modal" onClick={() => setShowInvoiceModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleAddInvoice}>
+              <div className="form-group">
+                <label>Car ID (Must be Available)</label>
+                <input type="number" value={invoiceForm.carID} onChange={e => setInvoiceForm({ ...invoiceForm, carID: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>Customer ID</label>
+                <input type="number" value={invoiceForm.custID} onChange={e => setInvoiceForm({ ...invoiceForm, custID: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>Total Price ($)</label>
+                <input type="number" value={invoiceForm.price} onChange={e => setInvoiceForm({ ...invoiceForm, price: e.target.value })} required />
+              </div>
+              <div className="modal-footer">
+                <button type="submit" className="btn-primary">Emit Sale & Issue Invoice</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Service Ticket Modal */}
+      {showTicketModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel">
+            <div className="modal-header">
+              <h3>Create Service Ticket</h3>
+              <button className="close-modal" onClick={() => setShowTicketModal(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleAddTicket}>
+              <div className="form-group">
+                <label>Customer ID</label>
+                <input type="number" value={ticketForm.custID} onChange={e => setTicketForm({ ...ticketForm, custID: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label>Car ID</label>
+                <input type="number" value={ticketForm.carID} onChange={e => setTicketForm({ ...ticketForm, carID: e.target.value })} required />
+              </div>
+              <div className="modal-footer">
+                <button type="submit" className="btn-primary">Create Service Ticket</button>
               </div>
             </form>
           </div>

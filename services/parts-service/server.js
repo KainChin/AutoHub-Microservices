@@ -40,7 +40,7 @@ async function initDB() {
     dbConnected = true;
     console.log('[Parts Service] Connected to SQL Server DB');
   } catch (err) {
-    console.log('[Parts Service] SQL Server connection failed, using in-memory mode:', err.message);
+    console.log('[Parts Service] SQL Server connection fallback to memory:', err.message);
     dbConnected = false;
   }
 }
@@ -71,6 +71,7 @@ app.get('/api/parts', async (req, res) => {
 // POST new part
 app.post('/api/parts', async (req, res) => {
   const { partID, partName, purchasePrice, retailPrice, Status } = req.body;
+  if (!partName) return res.status(400).json({ error: 'partName is required' });
   const newPartID = partID || Math.floor(500 + Math.random() * 500);
 
   if (dbConnected && pool) {
@@ -120,6 +121,9 @@ app.get('/api/parts/used', async (req, res) => {
 // POST add part to service ticket
 app.post('/api/parts/used', async (req, res) => {
   const { serviceTicketID, partID, numberUsed, price } = req.body;
+  if (!serviceTicketID || !partID) {
+    return res.status(400).json({ error: 'serviceTicketID and partID are required' });
+  }
 
   if (dbConnected && pool) {
     try {

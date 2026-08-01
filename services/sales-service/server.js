@@ -44,7 +44,7 @@ async function initDB() {
     dbConnected = true;
     console.log('[Sales Service] Connected to SQL Server DB');
   } catch (err) {
-    console.log('[Sales Service] SQL Server connection failed, using in-memory mode:', err.message);
+    console.log('[Sales Service] SQL Server connection fallback to memory:', err.message);
     dbConnected = false;
   }
 }
@@ -61,19 +61,34 @@ app.get('/health', (req, res) => {
 
 // --- CARS ENDPOINTS ---
 app.get('/api/sales/cars', async (req, res) => {
+  const statusFilter = req.query.status;
   if (dbConnected && pool) {
     try {
-      const result = await pool.request().query('SELECT carID, serialNumber, model, colour, year, Status FROM Cars ORDER BY carID DESC');
+      let query = 'SELECT carID, serialNumber, model, colour, year, Status FROM Cars';
+      if (statusFilter) {
+        query += ` WHERE Status = N'${statusFilter}'`;
+      }
+      query += ' ORDER BY carID DESC';
+      const result = await pool.request().query(query);
       return res.json({ source: 'database', count: result.recordset.length, data: result.recordset });
     } catch (err) {
       console.error('DB query error:', err);
     }
   }
-  res.json({ source: 'memory', count: inMemoryCars.length, data: inMemoryCars });
+
+  let list = inMemoryCars;
+  if (statusFilter) {
+    list = list.filter(c => c.Status.toLowerCase() === statusFilter.toLowerCase());
+  }
+  res.json({ source: 'memory', count: list.length, data: list });
 });
 
 app.post('/api/sales/cars', async (req, res) => {
   const { carID, serialNumber, model, colour, year, Status } = req.body;
+  if (!model || model.trim() === '') {
+    return res.status(400).json({ error: 'Car model is required' });
+  }
+
   const newCarID = carID || Math.floor(200 + Math.random() * 800);
 
   if (dbConnected && pool) {
@@ -92,9 +107,34 @@ app.post('/api/sales/cars', async (req, res) => {
     }
   }
 
-  const newCar = { carID: Number(newCarID), serialNumber: serialNumber || `VIN-${Date.now()}`, model, colour: colour || 'White', year: year || 2024, Status: Status || 'Available' };
+  const newCar = { carID: Number(newCarID), serialNumber: serialNumber || `VIN-${Date.now()}`, model, colour: colour || 'White', year: Number(year || 2024), Status: Status || 'Available' };
   inMemoryCars.push(newCar);
   res.status(201).json({ message: 'Car created in memory', data: newCar });
+});
+
+// Update Car Status
+app.put('/api/sales/cars/:id/status', async (req, res) => {
+  const carID = req.params.id;
+  const { Status } = req.body;
+
+  if (dbConnected && pool) {
+    try {
+      await pool.request()
+        .input('carID', sql.Decimal, carID)
+        .input('Status', sql.NVarChar, Status)
+        .query('UPDATE Cars SET Status = @Status WHERE carID = @carID');
+      return res.json({ message: 'Car status updated in DB', carID, Status });
+    } catch (err) {
+      console.error('DB update error:', err);
+    }
+  }
+
+  const car = inMemoryCars.find(c => c.carID == carID);
+  if (car) {
+    car.Status = Status;
+    return res.json({ message: 'Car status updated in memory', data: car });
+  }
+  res.status(404).json({ error: 'Car not found' });
 });
 
 // --- SALESPERSON ENDPOINTS ---
@@ -112,6 +152,8 @@ app.get('/api/sales/salespersons', async (req, res) => {
 
 app.post('/api/sales/salespersons', async (req, res) => {
   const { salesID, salesName, birthday, sex, salesAddress } = req.body;
+  if (!salesName) return res.status(400).json({ error: 'salesName is required' });
+
   const newSalesID = salesID || Math.floor(300 + Math.random() * 700);
 
   if (dbConnected && pool) {
@@ -154,11 +196,25 @@ app.get('/api/sales/invoices', async (req, res) => {
   res.json({ source: 'memory', count: inMemoryInvoices.length, data: inMemoryInvoices });
 });
 
+// POST Create Sales Invoice (with validation + Car Status update)
 app.post('/api/sales/invoices', async (req, res) => {
   const { salesID, carID, custID, price } = req.body;
+  if (!salesID || !carID || !custID || !price) {
+    return res.status(400).json({ error: 'salesID, carID, custID, and price are required' });
+  }
 
   if (dbConnected && pool) {
     try {
+      // 1. Check if car is Available
+      const carCheck = await pool.request().input('carID', sql.Decimal, carID).query('SELECT Status FROM Cars WHERE carID=@carID');
+      if (carCheck.recordset.length === 0) {
+        return res.status(404).json({ error: `Car #${carID} not found` });
+      }
+      if (carCheck.recordset[0].Status === 'Sold') {
+        return res.status(400).json({ error: `Car #${carID} is already Sold` });
+      }
+
+      // 2. Insert Invoice
       const result = await pool.request()
         .input('salesID', sql.Decimal, salesID)
         .input('carID', sql.Decimal, carID)
@@ -166,13 +222,25 @@ app.post('/api/sales/invoices', async (req, res) => {
         .input('price', sql.Int, price)
         .query('INSERT INTO SalesInvoice (invoiceDate, salesID, carID, custID, price) VALUES (GETDATE(), @salesID, @carID, @custID, @price); SELECT SCOPE_IDENTITY() AS invoiceID;');
 
-      // Also update car status to 'Sold'
+      // 3. Mark car as 'Sold'
       await pool.request().input('carID', sql.Decimal, carID).query("UPDATE Cars SET Status = 'Sold' WHERE carID = @carID");
 
-      return res.status(201).json({ message: 'Invoice generated in DB', invoiceID: result.recordset[0].invoiceID });
+      const invoiceID = result.recordset[0].invoiceID;
+      console.log(`📢 [Kafka Event Emitted] CarSoldEvent -> Invoice #${invoiceID}, Car #${carID}, Customer #${custID}`);
+
+      return res.status(201).json({
+        message: 'Sales Invoice created & Car marked as Sold in DB',
+        invoiceID,
+        kafkaEventEmitted: 'CarSoldEvent'
+      });
     } catch (err) {
       console.error('DB insert error:', err);
     }
+  }
+
+  const car = inMemoryCars.find(c => c.carID == carID);
+  if (car && car.Status === 'Sold') {
+    return res.status(400).json({ error: `Car #${carID} is already Sold` });
   }
 
   const newInv = {
@@ -184,11 +252,9 @@ app.post('/api/sales/invoices', async (req, res) => {
     price: Number(price)
   };
   inMemoryInvoices.push(newInv);
-  // Update in-memory car status
-  const car = inMemoryCars.find(c => c.carID == carID);
   if (car) car.Status = 'Sold';
 
-  res.status(201).json({ message: 'Invoice created in memory', data: newInv });
+  res.status(201).json({ message: 'Sales Invoice created in memory', data: newInv, kafkaEventEmitted: 'CarSoldEvent' });
 });
 
 app.listen(PORT, () => {

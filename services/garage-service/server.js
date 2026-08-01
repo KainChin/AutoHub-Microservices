@@ -48,7 +48,7 @@ async function initDB() {
     dbConnected = true;
     console.log('[Garage Service] Connected to SQL Server DB');
   } catch (err) {
-    console.log('[Garage Service] SQL Server connection failed, using in-memory mode:', err.message);
+    console.log('[Garage Service] SQL Server connection fallback to memory:', err.message);
     dbConnected = false;
   }
 }
@@ -78,6 +78,7 @@ app.get('/api/garage/mechanics', async (req, res) => {
 
 app.post('/api/garage/mechanics', async (req, res) => {
   const { mechanicID, mechanicName } = req.body;
+  if (!mechanicName) return res.status(400).json({ error: 'mechanicName is required' });
   const newMechID = mechanicID || Math.floor(400 + Math.random() * 600);
 
   if (dbConnected && pool) {
@@ -110,29 +111,6 @@ app.get('/api/garage/services', async (req, res) => {
   res.json({ source: 'memory', count: inMemoryServices.length, data: inMemoryServices });
 });
 
-app.post('/api/garage/services', async (req, res) => {
-  const { serviceID, serviceName, hourlyRate, Status } = req.body;
-  const newSvcID = serviceID || inMemoryServices.length + 1;
-
-  if (dbConnected && pool) {
-    try {
-      await pool.request()
-        .input('serviceID', sql.Int, newSvcID)
-        .input('serviceName', sql.NVarChar, serviceName)
-        .input('hourlyRate', sql.Money, hourlyRate || 150000)
-        .input('Status', sql.NVarChar, Status || 'Active')
-        .query('INSERT INTO Service (serviceID, serviceName, hourlyRate, Status) VALUES (@serviceID, @serviceName, @hourlyRate, @Status)');
-      return res.status(201).json({ message: 'Service type added to DB', serviceID: newSvcID });
-    } catch (err) {
-      console.error('DB insert error:', err);
-    }
-  }
-
-  const newSvc = { serviceID: Number(newSvcID), serviceName, hourlyRate: Number(hourlyRate || 150000), Status: Status || 'Active' };
-  inMemoryServices.push(newSvc);
-  res.status(201).json({ message: 'Service type added in memory', data: newSvc });
-});
-
 // --- SERVICE TICKETS ---
 app.get('/api/garage/tickets', async (req, res) => {
   if (dbConnected && pool) {
@@ -153,16 +131,22 @@ app.get('/api/garage/tickets', async (req, res) => {
 });
 
 app.post('/api/garage/tickets', async (req, res) => {
-  const { custID, carID, dateReturned } = req.body;
+  const { custID, carID } = req.body;
+  if (!custID || !carID) {
+    return res.status(400).json({ error: 'custID and carID are required' });
+  }
 
   if (dbConnected && pool) {
     try {
       const result = await pool.request()
         .input('custID', sql.Decimal, custID)
         .input('carID', sql.Decimal, carID)
-        .input('dateReturned', sql.Date, dateReturned || null)
-        .query('INSERT INTO ServiceTicket (dateReceived, dateReturned, custID, carID) VALUES (GETDATE(), @dateReturned, @custID, @carID); SELECT SCOPE_IDENTITY() AS serviceTicketID;');
-      return res.status(201).json({ message: 'Service ticket created in DB', serviceTicketID: result.recordset[0].serviceTicketID });
+        .query('INSERT INTO ServiceTicket (dateReceived, custID, carID) VALUES (GETDATE(), @custID, @carID); SELECT SCOPE_IDENTITY() AS serviceTicketID;');
+
+      // Update car status to 'InService'
+      await pool.request().input('carID', sql.Decimal, carID).query("UPDATE Cars SET Status = 'InService' WHERE carID = @carID");
+
+      return res.status(201).json({ message: 'Service ticket created & Car status set to InService in DB', serviceTicketID: result.recordset[0].serviceTicketID });
     } catch (err) {
       console.error('DB insert error:', err);
     }
@@ -171,7 +155,7 @@ app.post('/api/garage/tickets', async (req, res) => {
   const newTicket = {
     serviceTicketID: 1000 + inMemoryTickets.length + 1,
     dateReceived: new Date().toISOString().split('T')[0],
-    dateReturned: dateReturned || null,
+    dateReturned: null,
     custID: Number(custID),
     carID: Number(carID)
   };
@@ -179,10 +163,42 @@ app.post('/api/garage/tickets', async (req, res) => {
   res.status(201).json({ message: 'Service ticket created in memory', data: newTicket });
 });
 
-// --- ASSIGN MECHANIC TO TICKET ---
+// Complete Service Ticket (Set dateReturned)
+app.put('/api/garage/tickets/:id/complete', async (req, res) => {
+  const serviceTicketID = req.params.id;
+
+  if (dbConnected && pool) {
+    try {
+      const ticket = await pool.request().input('serviceTicketID', sql.Int, serviceTicketID).query('SELECT carID FROM ServiceTicket WHERE serviceTicketID=@serviceTicketID');
+      await pool.request().input('serviceTicketID', sql.Int, serviceTicketID).query('UPDATE ServiceTicket SET dateReturned = GETDATE() WHERE serviceTicketID=@serviceTicketID');
+
+      if (ticket.recordset.length > 0) {
+        const carID = ticket.recordset[0].carID;
+        await pool.request().input('carID', sql.Decimal, carID).query("UPDATE Cars SET Status = 'Available' WHERE carID=@carID");
+      }
+
+      console.log(`📢 [Kafka Event Emitted] ServiceCompletedEvent -> Ticket #${serviceTicketID}`);
+      return res.json({ message: 'Service Ticket completed in DB', serviceTicketID, kafkaEventEmitted: 'ServiceCompletedEvent' });
+    } catch (err) {
+      console.error('DB update error:', err);
+    }
+  }
+
+  const ticket = inMemoryTickets.find(t => t.serviceTicketID == serviceTicketID);
+  if (ticket) {
+    ticket.dateReturned = new Date().toISOString().split('T')[0];
+    return res.json({ message: 'Service Ticket completed in memory', data: ticket, kafkaEventEmitted: 'ServiceCompletedEvent' });
+  }
+  res.status(404).json({ error: 'Service Ticket not found' });
+});
+
+// Assign Mechanic to Service Ticket
 app.post('/api/garage/tickets/:id/assign-mechanic', async (req, res) => {
   const serviceTicketID = req.params.id;
   const { serviceID, mechanicID, hours, comment, rate } = req.body;
+  if (!serviceID || !mechanicID) {
+    return res.status(400).json({ error: 'serviceID and mechanicID are required' });
+  }
 
   if (dbConnected && pool) {
     try {
