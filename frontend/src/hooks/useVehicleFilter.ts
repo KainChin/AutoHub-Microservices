@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Vehicle, FilterState } from '../types/vehicle';
+import { fetchVehiclesFromApi } from '../services/api';
+import { MOCK_VEHICLES } from '../data/vehicles';
 
 const initialFilters: FilterState = {
   model: '',
@@ -10,8 +12,35 @@ const initialFilters: FilterState = {
   searchQuery: ''
 };
 
-export function useVehicleFilter(initialVehicles: Vehicle[]) {
+export function useVehicleFilter() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDbConnected, setIsDbConnected] = useState<boolean>(false);
+
+  // Dynamic Fetching from Database API
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    fetchVehiclesFromApi(filters.status)
+      .then((data) => {
+        if (isMounted) {
+          setVehicles(data);
+          setIsDbConnected(true);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setVehicles(MOCK_VEHICLES);
+          setIsDbConnected(false);
+          setIsLoading(false);
+        }
+      });
+
+    return () => { isMounted = false; };
+  }, [filters.status]);
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -22,20 +51,13 @@ export function useVehicleFilter(initialVehicles: Vehicle[]) {
   };
 
   const filteredVehicles = useMemo(() => {
-    return initialVehicles.filter((v) => {
-      // Model match
+    return vehicles.filter((v) => {
       if (filters.model && !v.model.toLowerCase().includes(filters.model.toLowerCase())) {
         return false;
       }
-      // Color match
       if (filters.color && !v.color.toLowerCase().includes(filters.color.toLowerCase())) {
         return false;
       }
-      // Status match
-      if (filters.status && v.status.toLowerCase() !== filters.status.toLowerCase()) {
-        return false;
-      }
-      // Search query match
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
         const matchesModel = v.model.toLowerCase().includes(query);
@@ -43,18 +65,19 @@ export function useVehicleFilter(initialVehicles: Vehicle[]) {
         const matchesVin = v.vin.toLowerCase().includes(query);
         if (!matchesModel && !matchesBrand && !matchesVin) return false;
       }
-      // Price range match
       if (filters.priceRange === 'under1b' && v.price >= 1000000000) return false;
       if (filters.priceRange === '1b-2b' && (v.price < 1000000000 || v.price > 2000000000)) return false;
       if (filters.priceRange === 'above2b' && v.price <= 2000000000) return false;
 
       return true;
     });
-  }, [initialVehicles, filters]);
+  }, [vehicles, filters]);
 
   return {
     filters,
     filteredVehicles,
+    isLoading,
+    isDbConnected,
     handleFilterChange,
     handleResetFilters
   };

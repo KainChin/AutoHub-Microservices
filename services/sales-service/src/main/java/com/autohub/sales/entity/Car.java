@@ -26,17 +26,25 @@ public class Car {
     @Column(name = "year")
     private Integer year;
 
+    @Column(name = "price")
+    private Long price;
+
+    @Column(name = "imageUrl")
+    private String imageUrl;
+
     @Column(name = "Status", nullable = false)
     private String status = "Available";
 
     public Car() {}
 
-    public Car(BigDecimal carID, String serialNumber, String model, String colour, Integer year, String status) {
+    public Car(BigDecimal carID, String serialNumber, String model, String colour, Integer year, Long price, String imageUrl, String status) {
         this.carID = carID;
         this.serialNumber = serialNumber;
         this.model = model;
         this.colour = colour;
         this.year = year;
+        this.price = price;
+        this.imageUrl = imageUrl;
         this.status = status;
     }
 
@@ -54,6 +62,12 @@ public class Car {
 
     public Integer getYear() { return year; }
     public void setYear(Integer year) { this.year = year; }
+
+    public Long getPrice() { return price; }
+    public void setPrice(Long price) { this.price = price; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
