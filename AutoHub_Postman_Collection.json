@@ -1,0 +1,157 @@
+{
+  "info": {
+    "name": "AutoHub Microservices API Collection",
+    "description": "Complete Postman collection for AutoHub Microservices Architecture (API Gateway & Individual Services)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. API Gateway & Health",
+      "item": [
+        {
+          "name": "Get System Health Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/health" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Customer Service",
+      "item": [
+        {
+          "name": "Get All Customers (via Gateway)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/customers" }
+          }
+        },
+        {
+          "name": "Search Customers",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/customers?q=Nguyen" }
+          }
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/customers/101" }
+          }
+        },
+        {
+          "name": "Create New Customer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"custID\": 105,\n  \"custName\": \"Le Van Hoang\",\n  \"phone\": \"0987654321\",\n  \"sex\": \"M\",\n  \"cusAddress\": \"Ha Noi\"\n}"
+            },
+            "url": { "raw": "http://localhost:5500/api/customers" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Sales & Cars Service",
+      "item": [
+        {
+          "name": "Get All Vehicles",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/sales/cars" }
+          }
+        },
+        {
+          "name": "Filter Vehicles by Status (Available)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/sales/cars?status=Available" }
+          }
+        },
+        {
+          "name": "Create New Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carID\": 205,\n  \"model\": \"Ford Ranger Wildtrak\",\n  \"serialNumber\": \"VIN-FOR-005\",\n  \"colour\": \"Orange\",\n  \"year\": 2024\n}"
+            },
+            "url": { "raw": "http://localhost:5500/api/sales/cars" }
+          }
+        },
+        {
+          "name": "Create Sales Invoice (Emits CarSoldEvent)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"salesID\": 301,\n  \"carID\": 201,\n  \"custID\": 101,\n  \"price\": 1850000000\n}"
+            },
+            "url": { "raw": "http://localhost:5500/api/sales/invoices" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Garage & Repairs Service",
+      "item": [
+        {
+          "name": "Get All Service Tickets",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/garage/tickets" }
+          }
+        },
+        {
+          "name": "Create Service Ticket",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"custID\": 102,\n  \"carID\": 202\n}"
+            },
+            "url": { "raw": "http://localhost:5500/api/garage/tickets" }
+          }
+        },
+        {
+          "name": "Complete Service Ticket",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "http://localhost:5500/api/garage/tickets/1001/complete" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Parts & Inventory Service",
+      "item": [
+        {
+          "name": "Get Parts Catalog",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5500/api/parts" }
+          }
+        },
+        {
+          "name": "Create Spare Part",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partID\": 504,\n  \"partName\": \"Lop xe Michelin 225/50R17\",\n  \"purchasePrice\": 2500000,\n  \"retailPrice\": 3200000\n}"
+            },
+            "url": { "raw": "http://localhost:5500/api/parts" }
+          }
+        }
+      ]
+    }
+  ]
+}
