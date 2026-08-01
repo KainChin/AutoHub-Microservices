@@ -15,46 +15,43 @@ const SALES_SERVICE_URL = process.env.SALES_SERVICE_URL || 'http://localhost:500
 const GARAGE_SERVICE_URL = process.env.GARAGE_SERVICE_URL || 'http://localhost:5003';
 const PARTS_SERVICE_URL = process.env.PARTS_SERVICE_URL || 'http://localhost:5004';
 
-// Real SMS Gateway Sender Function (Supports SpeedSMS.vn & Twilio APIs)
-async function sendRealSmsToPhone(phone, otpCode) {
-  const cleanPhone = phone.replace(/\s+/g, '');
-  const formattedPhone = cleanPhone.startsWith('0') ? '+84' + cleanPhone.slice(1) : cleanPhone;
-  const messageContent = `[AutoHub] Ma OTP khoi phuc mat khau cua ban la: ${otpCode}. Ma co hieu luc trong 5 phut.`;
+// Real Telegram Bot Dispatcher Function (Free instant notification to phone handset)
+async function sendTelegramMessage(phone, otpCode) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  const text = `📩 *[AutoHub OTP Notification]*\n\n📲 *Số điện thoại:* \`${phone}\`\n🔑 *Mã xác thực OTP:* \`${otpCode}\`\n\n⏱ _Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ với bất kỳ ai!_`;
 
   console.log(`=================================================`);
-  console.log(`📡 [REAL TELECOM SMS GATEWAY DISPATCHER]`);
-  console.log(`📲 Target Handset Phone: ${phone} (${formattedPhone})`);
-  console.log(`🔑 Dispatched OTP Code : [ ${otpCode} ]`);
+  console.log(`📡 [REAL TELEGRAM BOT DISPATCHER]`);
+  console.log(`📲 Target Phone: ${phone}`);
+  console.log(`🔑 OTP Code    : [ ${otpCode} ]`);
   console.log(`=================================================`);
 
-  // Optional SpeedSMS / Twilio API call if SPEEDSMS_TOKEN or TWILIO_SID is set
-  const speedSmsToken = process.env.SPEEDSMS_TOKEN;
-  if (speedSmsToken) {
-    try {
-      const auth = Buffer.from(`${speedSmsToken}:x`).toString('base64');
-      const postData = JSON.stringify({
-        to: [cleanPhone],
-        content: messageContent,
-        sms_type: 2,
-        sender: 'AutoHub'
-      });
+  if (!botToken || !chatId) return;
 
-      const req = https.request('https://api.speedsms.vn/index.php/sms/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${auth}`
-        }
-      });
-      req.write(postData);
-      req.end();
-    } catch (err) {
-      console.error('SpeedSMS dispatch error:', err.message);
-    }
+  try {
+    const postData = JSON.stringify({
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'Markdown'
+    });
+
+    const req = https.request(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    });
+    req.write(postData);
+    req.end();
+  } catch (err) {
+    console.error('Telegram Dispatch Error:', err.message);
   }
 }
 
-// Endpoint: Real SMS Dispatcher
+// Endpoint: Send OTP via Telegram / Real SMS Dispatcher
 app.post('/api/sms/send-otp', async (req, res) => {
   const { phone } = req.body;
   if (!phone) {
@@ -62,14 +59,14 @@ app.post('/api/sms/send-otp', async (req, res) => {
   }
 
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  await sendRealSmsToPhone(phone, otpCode);
+  await sendTelegramMessage(phone, otpCode);
 
   res.json({
     success: true,
     phone,
     otpCode,
-    status: 'SMS_DISPATCHED_TO_SIM_HANDSET',
-    message: `Đã phát lệnh gửi tin nhắn SMS tới số điện thoại ${phone}`
+    status: 'OTP_DISPATCHED_TO_TELEGRAM_HANDSET',
+    message: `Mã OTP đã được gửi đến thiết bị di động (${phone})`
   });
 });
 
@@ -93,6 +90,6 @@ app.use('/api/parts', proxy(PARTS_SERVICE_URL, {
 app.listen(PORT, () => {
   console.log(`=================================================`);
   console.log(`🚀 [API Gateway] Listening on http://localhost:${PORT}`);
-  console.log(`📲 Real SMS Gateway Dispatcher -> POST /api/sms/send-otp`);
+  console.log(`📲 Telegram OTP Dispatcher -> POST /api/sms/send-otp`);
   console.log(`=================================================`);
 });
