@@ -36,7 +36,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <>
-      {/* Real-time SMS Toast notification sent to User Phone */}
+      {/* Real-time SMS Toast Notification */}
       <SmsToast
         show={showSmsToast}
         phone={phone}
@@ -98,6 +98,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               error={errors.otp}
               isSubmitting={isSubmitting}
               onVerifySuccess={handleVerifyOtpSuccess}
+              onResendOtp={() => {
+                setShowSmsToast(true);
+              }}
               onBack={() => setStep('PHONE')}
             />
           )}

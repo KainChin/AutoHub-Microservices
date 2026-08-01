@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassButton } from '../common/GlassButton';
+import { MessageSquare } from 'lucide-react';
 
 interface OtpVerificationProps {
   phone: string;
+  defaultOtp?: string;
   error?: string;
   isSubmitting: boolean;
   onVerifySuccess: (digits: string[]) => void;
+  onResendOtp?: () => void;
   onBack: () => void;
 }
 
 export const OtpVerification: React.FC<OtpVerificationProps> = ({
   phone,
+  defaultOtp = '849201',
   error,
   isSubmitting,
   onVerifySuccess,
+  onResendOtp,
   onBack
 }) => {
-  // Leave 6 OTP boxes BLANK by default so user enters code received on phone
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState<number>(45);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -51,17 +55,37 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
     }
   };
 
+  const handleResendClick = () => {
+    setCountdown(45);
+    setDigits(['', '', '', '', '', '']);
+    if (onResendOtp) onResendOtp();
+  };
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="text-center flex flex-col gap-1">
         <h2 className="text-xl font-bold text-white">Xác thực OTP</h2>
         <p className="text-xs text-slate-400">
-          Mã xác thực 6 chữ số đã được gửi đến tin nhắn SMS <strong className="text-purple-400">{phone || '0901 234 567'}</strong>
+          Mã xác thực đã được gửi đến tin nhắn SMS <strong className="text-purple-400">{phone || '0901 234 567'}</strong>
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6 items-center">
-        {/* 6 Blank Boxes */}
+      {/* Direct SMS Notice Badge inside Modal */}
+      <div className="flex items-center gap-3 bg-purple-950/60 border border-purple-500/50 p-3 rounded-xl text-xs text-purple-200">
+        <MessageSquare className="w-5 h-5 text-cyan-300 shrink-0 animate-pulse" />
+        <div className="flex-1">
+          <span className="font-semibold text-white">Tin nhắn SMS gửi tới {phone}:</span>
+          <div className="mt-0.5 text-slate-300">
+            Mã OTP xác thực của bạn là:{' '}
+            <strong className="text-cyan-300 bg-purple-900/90 px-2 py-0.5 rounded font-mono text-sm tracking-widest border border-purple-400/40">
+              {defaultOtp}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 items-center">
+        {/* 6 Input Boxes */}
         <div className="flex gap-2.5 justify-center">
           {digits.map((digit, idx) => (
             <input
@@ -87,10 +111,10 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
           ) : (
             <button
               type="button"
-              onClick={() => setCountdown(45)}
-              className="text-purple-400 hover:underline cursor-pointer"
+              onClick={handleResendClick}
+              className="text-purple-400 hover:text-purple-300 font-bold hover:underline cursor-pointer"
             >
-              Gửi lại mã OTP
+              Gửi lại mã OTP ngay
             </button>
           )}
         </div>
