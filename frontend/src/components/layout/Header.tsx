@@ -1,17 +1,28 @@
-import React from 'react';
-import { Search, Heart, ShoppingBag, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Heart, ShoppingBag, User as UserIcon } from 'lucide-react';
+import { AvatarButton } from './AvatarButton';
+import { UserDropdown } from './UserDropdown';
+import { User } from '../../types/user';
 
 interface HeaderProps {
+  user: User | null;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onOpenProfileModal?: () => void;
+  onOpenAuthModal: () => void;
+  onOpenProfileModal: () => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  user,
   searchQuery,
   onSearchChange,
-  onOpenProfileModal
+  onOpenAuthModal,
+  onOpenProfileModal,
+  onLogout
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+
   return (
     <header className="sticky top-0 z-40 glass-panel border-b border-slate-800/80 px-6 py-4 mb-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -39,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Action Controls */}
+        {/* Actions & User State */}
         <div className="flex items-center gap-4">
           <button className="relative p-2 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-full transition-colors">
             <Heart className="w-5 h-5" />
@@ -55,13 +66,38 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>
 
-          <button
-            onClick={onOpenProfileModal}
-            className="flex items-center gap-2 bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
-          >
-            <User className="w-4 h-4 text-slate-400" />
-            <span>Đăng Nhập / Hồ Sơ</span>
-          </button>
+          {/* User Auth Container */}
+          <div className="relative">
+            {user ? (
+              <>
+                <AvatarButton
+                  user={user}
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                />
+                <UserDropdown
+                  user={user}
+                  isOpen={isDropdownOpen}
+                  onClose={() => setIsDropdownOpen(false)}
+                  onLogout={() => {
+                    setIsDropdownOpen(false);
+                    onLogout();
+                  }}
+                  onOpenProfile={() => {
+                    setIsDropdownOpen(false);
+                    onOpenProfileModal();
+                  }}
+                />
+              </>
+            ) : (
+              <button
+                onClick={onOpenAuthModal}
+                className="flex items-center gap-2 bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
+              >
+                <UserIcon className="w-4 h-4 text-slate-400" />
+                <span>Đăng Nhập / Hồ Sơ</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </header>
