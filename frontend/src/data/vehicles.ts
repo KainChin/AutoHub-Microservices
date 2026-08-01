@@ -22,7 +22,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     color: 'Trắng Ngọc Trai',
     price: 1245000000,
     status: 'Available',
-    imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=800&q=80',
     location: 'Hà Nội'
   },
   {
@@ -178,7 +178,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     color: 'Cam Đen',
     price: 698000000,
     status: 'Available',
-    imageUrl: 'https://images.unsplash.com/photo-1541348263662-e068662d82af?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80',
     location: 'Cần Thơ'
   },
   {
@@ -190,7 +190,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     color: 'Đỏ Pha Lê',
     price: 860000000,
     status: 'Available',
-    imageUrl: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=800&q=80',
     location: 'TP. Hồ Chí Minh'
   }
 ];
