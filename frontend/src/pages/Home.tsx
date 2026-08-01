@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '../components/layout/Header';
 import { HeroBanner } from '../components/hero/HeroBanner';
 import { FilterBar } from '../components/filter/FilterBar';
 import { VehicleGrid } from '../components/vehicle/VehicleGrid';
 import { Footer } from '../components/layout/Footer';
+import { CustomerProfileModal } from '../components/customer/CustomerProfileModal';
 import { useVehicleFilter } from '../hooks/useVehicleFilter';
 
 export const Home: React.FC = () => {
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+
   const {
     filters,
     totalCount,
@@ -25,6 +28,7 @@ export const Home: React.FC = () => {
         <Header
           searchQuery={filters.searchQuery}
           onSearchChange={(query) => handleFilterChange('searchQuery', query)}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
         />
 
         <main className="max-w-7xl mx-auto px-6">
@@ -48,6 +52,12 @@ export const Home: React.FC = () => {
       </div>
 
       <Footer />
+
+      {/* Customer Registration Modal */}
+      <CustomerProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </div>
   );
 };

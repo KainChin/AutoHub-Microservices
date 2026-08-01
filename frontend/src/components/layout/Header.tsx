@@ -4,11 +4,16 @@ import { Search, Heart, ShoppingBag, User } from 'lucide-react';
 interface HeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onOpenProfileModal?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) => {
+export const Header: React.FC<HeaderProps> = ({
+  searchQuery,
+  onSearchChange,
+  onOpenProfileModal
+}) => {
   return (
-    <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-6 py-4 mb-6">
+    <header className="sticky top-0 z-40 glass-panel border-b border-slate-800/80 px-6 py-4 mb-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Logo */}
         <div className="flex items-center gap-3">
@@ -50,7 +55,10 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange }) =
             </span>
           </button>
 
-          <button className="flex items-center gap-2 bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-full text-sm font-medium transition-colors">
+          <button
+            onClick={onOpenProfileModal}
+            className="flex items-center gap-2 bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
+          >
             <User className="w-4 h-4 text-slate-400" />
             <span>Đăng Nhập / Hồ Sơ</span>
           </button>
