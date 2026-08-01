@@ -28,3 +28,12 @@
   box-shadow: 0 10px 30px -10px rgba(220, 38, 38, 0.2);
   transform: translateY(-2px);
 }
+
+@keyframes waveProgress {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
