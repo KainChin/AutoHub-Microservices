@@ -1,19 +1,33 @@
-import { useState } from 'react';
-import { CustomerProfile, FormErrors, Gender } from '../types/customer';
+import { useState, useEffect } from 'react';
+import { CustomerProfile, FormErrors } from '../types/customer';
 import { validateCustomerProfile } from '../schemas/customerProfileSchema';
 
-const initialProfile: CustomerProfile = {
-  fullName: '',
-  phone: '',
-  gender: 'Nam',
-  address: ''
-};
+export function useCustomerProfile(
+  initialData?: { fullName?: string; phone?: string },
+  onSuccess?: () => void,
+  onCloseModal?: () => void
+) {
+  const [profile, setProfile] = useState<CustomerProfile>({
+    fullName: initialData?.fullName || '',
+    phone: initialData?.phone || '',
+    gender: 'Nam',
+    address: ''
+  });
 
-export function useCustomerProfile(onSuccess?: () => void) {
-  const [profile, setProfile] = useState<CustomerProfile>(initialProfile);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showToast, setShowToast] = useState<boolean>(false);
+
+  // Synchronize when initialData changes (e.g. user just registered)
+  useEffect(() => {
+    if (initialData?.fullName || initialData?.phone) {
+      setProfile(prev => ({
+        ...prev,
+        fullName: initialData.fullName || prev.fullName,
+        phone: initialData.phone || prev.phone
+      }));
+    }
+  }, [initialData?.fullName, initialData?.phone]);
 
   const updateField = <K extends keyof CustomerProfile>(field: K, value: CustomerProfile[K]) => {
     setProfile(prev => ({ ...prev, [field]: value }));
@@ -23,7 +37,12 @@ export function useCustomerProfile(onSuccess?: () => void) {
   };
 
   const resetForm = () => {
-    setProfile(initialProfile);
+    setProfile({
+      fullName: initialData?.fullName || '',
+      phone: initialData?.phone || '',
+      gender: 'Nam',
+      address: ''
+    });
     setErrors({});
   };
 
@@ -39,7 +58,7 @@ export function useCustomerProfile(onSuccess?: () => void) {
     setIsSubmitting(true);
 
     try {
-      // API Post to Backend API Gateway / Customer Service
+      // POST to API Gateway / Customer Service
       await fetch('http://localhost:5500/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,16 +74,12 @@ export function useCustomerProfile(onSuccess?: () => void) {
       setShowToast(true);
 
       if (onSuccess) onSuccess();
-
-      setTimeout(() => {
-        setShowToast(false);
-        resetForm();
-      }, 3000);
+      if (onCloseModal) onCloseModal(); // Tự động đóng Modal ngay lập tức!
     } catch (err) {
       setIsSubmitting(false);
       setShowToast(true);
       if (onSuccess) onSuccess();
-      setTimeout(() => setShowToast(false), 3000);
+      if (onCloseModal) onCloseModal();
     }
   };
 

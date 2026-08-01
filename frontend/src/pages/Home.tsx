@@ -6,6 +6,7 @@ import { VehicleGrid } from '../components/vehicle/VehicleGrid';
 import { Footer } from '../components/layout/Footer';
 import { AuthenticationModal } from '../components/authentication/AuthenticationModal';
 import { CustomerProfileModal } from '../components/customer/CustomerProfileModal';
+import { RegisterNoticeToast } from '../components/customer/RegisterNoticeToast';
 import { useVehicleFilter } from '../hooks/useVehicleFilter';
 import { User } from '../types/user';
 
@@ -13,6 +14,7 @@ export const Home: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [showRegisterNotice, setShowRegisterNotice] = useState<boolean>(false);
 
   const {
     filters,
@@ -30,14 +32,20 @@ export const Home: React.FC = () => {
     setCurrentUser(user);
     setIsAuthModalOpen(false);
 
-    // Business Logic Check: Only open Profile Completion if incomplete
     if (!user.isProfileComplete) {
+      setShowRegisterNotice(true);
       setIsProfileModalOpen(true);
+      setTimeout(() => setShowRegisterNotice(false), 4000);
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleSaveProfileSuccess = () => {
+    if (currentUser) {
+      setCurrentUser({
+        ...currentUser,
+        isProfileComplete: true
+      });
+    }
   };
 
   return (
@@ -49,7 +57,7 @@ export const Home: React.FC = () => {
           onSearchChange={(query) => handleFilterChange('searchQuery', query)}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
-          onLogout={handleLogout}
+          onLogout={() => setCurrentUser(null)}
         />
 
         <main className="max-w-7xl mx-auto px-6">
@@ -74,7 +82,13 @@ export const Home: React.FC = () => {
 
       <Footer />
 
-      {/* Authentication System Modal (Login / Register) */}
+      {/* Registration Notice Toast */}
+      <RegisterNoticeToast
+        show={showRegisterNotice}
+        onClose={() => setShowRegisterNotice(false)}
+      />
+
+      {/* Authentication Modal */}
       <AuthenticationModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -84,7 +98,9 @@ export const Home: React.FC = () => {
       {/* Customer Profile Completion Modal */}
       <CustomerProfileModal
         isOpen={isProfileModalOpen}
+        user={currentUser}
         onClose={() => setIsProfileModalOpen(false)}
+        onSaveSuccess={handleSaveProfileSuccess}
       />
     </div>
   );
