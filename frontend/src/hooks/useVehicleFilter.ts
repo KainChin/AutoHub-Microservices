@@ -7,16 +7,16 @@ const initialFilters: FilterState = {
   model: '',
   priceRange: '',
   color: '',
-  status: 'Available',
+  status: '', // All statuses by default so all 6 cars show on UI
   sortBy: 'newest',
   searchQuery: ''
 };
 
 export function useVehicleFilter() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isDbConnected, setIsDbConnected] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
 
   // Dynamic Fetching from Database API
   useEffect(() => {
@@ -25,9 +25,13 @@ export function useVehicleFilter() {
 
     fetchVehiclesFromApi(filters.status)
       .then((data) => {
-        if (isMounted) {
+        if (isMounted && data && data.length > 0) {
           setVehicles(data);
           setIsDbConnected(true);
+          setIsLoading(false);
+        } else if (isMounted) {
+          setVehicles(MOCK_VEHICLES);
+          setIsDbConnected(false);
           setIsLoading(false);
         }
       })
@@ -56,6 +60,9 @@ export function useVehicleFilter() {
         return false;
       }
       if (filters.color && !v.color.toLowerCase().includes(filters.color.toLowerCase())) {
+        return false;
+      }
+      if (filters.status && v.status.toLowerCase() !== filters.status.toLowerCase()) {
         return false;
       }
       if (filters.searchQuery) {

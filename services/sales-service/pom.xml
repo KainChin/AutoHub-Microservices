@@ -15,7 +15,7 @@
     <artifactId>sales-service</artifactId>
     <version>1.0.0</version>
     <name>sales-service</name>
-    <description>Sales & Cars Microservice for AutoHub Platform</description>
+    <description>Sales and Cars Microservice for AutoHub Platform</description>
 
     <properties>
         <java.version>17</java.version>

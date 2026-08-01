@@ -19,7 +19,7 @@ export const VehicleGrid: React.FC<VehicleGridProps> = ({ vehicles }) => {
             </span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Chỉ hiển thị xe đang có sẵn (Available)
+            Danh mục xe sang khả dụng tại showroom AutoHub
           </p>
         </div>
 
