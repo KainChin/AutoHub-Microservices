@@ -3,7 +3,6 @@ import { GlassButton } from '../common/GlassButton';
 
 interface OtpVerificationProps {
   phone: string;
-  defaultOtp?: string;
   error?: string;
   isSubmitting: boolean;
   onVerifySuccess: (digits: string[]) => void;
@@ -12,15 +11,13 @@ interface OtpVerificationProps {
 
 export const OtpVerification: React.FC<OtpVerificationProps> = ({
   phone,
-  defaultOtp = '123456',
   error,
   isSubmitting,
   onVerifySuccess,
   onBack
 }) => {
-  // Pre-fill digits from generated OTP for seamless user testing
-  const initialDigits = defaultOtp.split('').slice(0, 6);
-  const [digits, setDigits] = useState<string[]>(initialDigits);
+  // Leave 6 OTP boxes BLANK by default so user enters code received on phone
+  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState<number>(45);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -49,7 +46,9 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onVerifySuccess(digits);
+    if (digits.join('').length === 6) {
+      onVerifySuccess(digits);
+    }
   };
 
   return (
@@ -57,11 +56,12 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
       <div className="text-center flex flex-col gap-1">
         <h2 className="text-xl font-bold text-white">Xác thực OTP</h2>
         <p className="text-xs text-slate-400">
-          Mã xác thực đã được gửi đến tin nhắn SMS <strong className="text-purple-400">{phone || '0901 234 567'}</strong>
+          Mã xác thực 6 chữ số đã được gửi đến tin nhắn SMS <strong className="text-purple-400">{phone || '0901 234 567'}</strong>
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 items-center">
+        {/* 6 Blank Boxes */}
         <div className="flex gap-2.5 justify-center">
           {digits.map((digit, idx) => (
             <input
@@ -73,7 +73,8 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
               value={digit}
               onChange={(e) => handleChange(idx, e.target.value)}
               onKeyDown={(e) => handleKeyDown(idx, e)}
-              className="w-11 h-12 text-center text-lg font-bold bg-[#111625]/90 border border-slate-700 focus:border-purple-500 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-purple-500/30 transition-all"
+              placeholder="•"
+              className="w-11 h-12 text-center text-lg font-bold bg-[#111625]/90 border border-slate-700 focus:border-purple-500 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-purple-500/30 transition-all placeholder:text-slate-600"
             />
           ))}
         </div>

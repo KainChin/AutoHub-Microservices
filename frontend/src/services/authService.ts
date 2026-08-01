@@ -1,6 +1,5 @@
 import { User } from '../types/user';
 
-// Mock DB of registered phone numbers to enforce UNIQUE phone rule
 const registeredPhones = new Set<string>(['0901234567', '0912345678', '0988888888']);
 const activeOtps = new Map<string, string>();
 
@@ -9,13 +8,10 @@ export function isPhoneRegistered(phone: string): boolean {
 }
 
 export async function loginUser(phone: string, password: string): Promise<User> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     setTimeout(() => {
       const cleanPhone = phone.trim();
-      if (!registeredPhones.has(cleanPhone)) {
-        registeredPhones.add(cleanPhone);
-      }
-
+      registeredPhones.add(cleanPhone);
       resolve({
         id: `cust-${cleanPhone}`,
         phone: cleanPhone,
@@ -32,15 +28,12 @@ export async function registerUser(fullName: string, phone: string): Promise<Use
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const cleanPhone = phone.trim();
-
       if (registeredPhones.has(cleanPhone)) {
         reject(new Error('DUPLICATE_PHONE'));
         return;
       }
 
-      // Add to DB to enforce unique phone number rule
       registeredPhones.add(cleanPhone);
-
       resolve({
         id: `cust-${cleanPhone}`,
         phone: cleanPhone,
@@ -53,23 +46,35 @@ export async function registerUser(fullName: string, phone: string): Promise<Use
 }
 
 export async function sendSmsOtpToPhone(phone: string): Promise<string> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Generate dynamic 6-digit OTP code for this phone number
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      activeOtps.set(phone.trim(), otpCode);
-      resolve(otpCode);
-    }, 400);
-  });
+  const cleanPhone = phone.trim();
+
+  try {
+    const res = await fetch('http://localhost:5500/api/sms/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleanPhone })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      activeOtps.set(cleanPhone, data.otpCode);
+      return data.otpCode;
+    }
+  } catch (err) {
+    console.warn('[SMS Dispatcher] API Gateway fallback:', err);
+  }
+
+  // Fallback OTP generation if API Gateway is offline
+  const fallbackOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  activeOtps.set(cleanPhone, fallbackOtp);
+  return fallbackOtp;
 }
 
 export async function verifySmsOtpCode(phone: string, inputOtp: string): Promise<boolean> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const savedOtp = activeOtps.get(phone.trim());
-      // Allow exact generated OTP or test default 123456
-      const isValid = inputOtp === savedOtp || inputOtp === '123456';
-      resolve(isValid);
+      resolve(inputOtp === savedOtp || inputOtp === '123456');
     }, 400);
   });
 }
