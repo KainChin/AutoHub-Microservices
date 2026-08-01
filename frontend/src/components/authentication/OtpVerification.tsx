@@ -3,20 +3,24 @@ import { GlassButton } from '../common/GlassButton';
 
 interface OtpVerificationProps {
   phone: string;
+  defaultOtp?: string;
   error?: string;
   isSubmitting: boolean;
-  onVerifySuccess: () => void;
+  onVerifySuccess: (digits: string[]) => void;
   onBack: () => void;
 }
 
 export const OtpVerification: React.FC<OtpVerificationProps> = ({
   phone,
+  defaultOtp = '123456',
   error,
   isSubmitting,
   onVerifySuccess,
   onBack
 }) => {
-  const [digits, setDigits] = useState<string[]>(['1', '2', '3', '4', '5', '6']);
+  // Pre-fill digits from generated OTP for seamless user testing
+  const initialDigits = defaultOtp.split('').slice(0, 6);
+  const [digits, setDigits] = useState<string[]>(initialDigits);
   const [countdown, setCountdown] = useState<number>(45);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -45,14 +49,7 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (digits.join('').length === 6) {
-      onVerifySuccess();
-    }
-  };
-
-  const formatTimer = (seconds: number) => {
-    const s = seconds % 60;
-    return `00:${s < 10 ? '0' : ''}${s}`;
+    onVerifySuccess(digits);
   };
 
   return (
@@ -60,12 +57,11 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
       <div className="text-center flex flex-col gap-1">
         <h2 className="text-xl font-bold text-white">Xác thực OTP</h2>
         <p className="text-xs text-slate-400">
-          Mã xác thực đã được gửi đến <strong className="text-purple-400">{phone || '0901 234 567'}</strong>
+          Mã xác thực đã được gửi đến tin nhắn SMS <strong className="text-purple-400">{phone || '0901 234 567'}</strong>
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 items-center">
-        {/* 6 Boxes */}
         <div className="flex gap-2.5 justify-center">
           {digits.map((digit, idx) => (
             <input
@@ -82,11 +78,11 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({
           ))}
         </div>
 
-        {error && <span className="text-xs text-red-400 font-medium">{error}</span>}
+        {error && <span className="text-xs text-red-400 font-medium text-center">{error}</span>}
 
         <div className="text-xs text-slate-400">
           {countdown > 0 ? (
-            <span>Gửi lại mã sau <strong className="text-slate-200">{formatTimer(countdown)}</strong></span>
+            <span>Gửi lại mã sau <strong className="text-slate-200">00:{countdown < 10 ? '0' : ''}{countdown}</strong></span>
           ) : (
             <button
               type="button"

@@ -27,9 +27,15 @@ export function useRegister(onRegisterSuccess: (user: User) => void) {
       const newUser = await registerUser(fullName, phone);
       setIsSubmitting(false);
       onRegisterSuccess(newUser);
-    } catch (err) {
+    } catch (err: any) {
       setIsSubmitting(false);
-      setErrors({ phone: 'Đăng ký thất bại. Vui lòng thử lại.' });
+      if (err?.message === 'DUPLICATE_PHONE') {
+        setErrors({
+          phone: 'Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc dùng SĐT khác.'
+        });
+      } else {
+        setErrors({ phone: 'Đăng ký thất bại. Vui lòng thử lại.' });
+      }
     }
   };
 
