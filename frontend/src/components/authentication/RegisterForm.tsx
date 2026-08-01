@@ -38,48 +38,51 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <GlassInput
-          label="Họ và tên"
-          required
-          icon={UserIcon}
-          placeholder="Nhập họ và tên"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          error={errors.fullName}
-        />
+        {/* Horizontal 2-Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <GlassInput
+            label="Họ và tên"
+            required
+            icon={UserIcon}
+            placeholder="Nhập họ và tên"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            error={errors.fullName}
+          />
 
-        <GlassInput
-          label="Số điện thoại"
-          required
-          icon={Phone}
-          type="tel"
-          placeholder="Nhập số điện thoại"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          error={errors.phone}
-        />
+          <GlassInput
+            label="Số điện thoại"
+            required
+            icon={Phone}
+            type="tel"
+            placeholder="Nhập số điện thoại"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            error={errors.phone}
+          />
 
-        <GlassInput
-          label="Mật khẩu"
-          required
-          icon={Lock}
-          type="password"
-          placeholder="Nhập mật khẩu"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={errors.password}
-        />
+          <GlassInput
+            label="Mật khẩu"
+            required
+            icon={Lock}
+            type="password"
+            placeholder="Nhập mật khẩu"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={errors.password}
+          />
 
-        <GlassInput
-          label="Xác nhận mật khẩu"
-          required
-          icon={Lock}
-          type="password"
-          placeholder="Nhập lại mật khẩu"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          error={errors.confirmPassword}
-        />
+          <GlassInput
+            label="Xác nhận mật khẩu"
+            required
+            icon={Lock}
+            type="password"
+            placeholder="Nhập lại mật khẩu"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            error={errors.confirmPassword}
+          />
+        </div>
 
         <div className="flex flex-col gap-1 my-1">
           <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">

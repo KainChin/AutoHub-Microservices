@@ -24,7 +24,7 @@ export const CustomerProfileForm: React.FC<CustomerProfileFormProps> = ({
 }) => {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
-      {/* 2-Column Grid: Left Avatar Uploader, Right Fields */}
+      {/* Main Grid: Left Avatar Uploader, Right Horizontal Inputs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {/* Left Column: Avatar */}
         <div className="md:col-span-1 flex items-center justify-center pt-2">
@@ -34,24 +34,28 @@ export const CustomerProfileForm: React.FC<CustomerProfileFormProps> = ({
           />
         </div>
 
-        {/* Right Column: Fields */}
+        {/* Right Column: Horizontal Form Grid */}
         <div className="md:col-span-2 flex flex-col gap-4">
-          <GlassInput
-            label="Họ và tên"
-            required
-            icon={UserIcon}
-            placeholder="Nhập họ và tên"
-            value={profile.fullName}
-            onChange={(e) => onUpdateField('fullName', e.target.value)}
-            error={errors.fullName}
-          />
+          {/* Horizontal Row: Full Name & Gender */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <GlassInput
+              label="Họ và tên"
+              required
+              icon={UserIcon}
+              placeholder="Nhập họ và tên"
+              value={profile.fullName}
+              onChange={(e) => onUpdateField('fullName', e.target.value)}
+              error={errors.fullName}
+            />
 
-          <GenderRadioGroup
-            value={profile.gender}
-            onChange={(val) => onUpdateField('gender', val)}
-            error={errors.gender}
-          />
+            <GenderRadioGroup
+              value={profile.gender}
+              onChange={(val) => onUpdateField('gender', val)}
+              error={errors.gender}
+            />
+          </div>
 
+          {/* Full Width Textarea: Address */}
           <GlassTextarea
             label="Địa chỉ thường trú"
             required
