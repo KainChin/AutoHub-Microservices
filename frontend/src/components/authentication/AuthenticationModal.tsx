@@ -9,12 +9,14 @@ interface AuthenticationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthSuccess: (user: User) => void;
+  onResetPasswordSuccess?: () => void;
 }
 
 export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
   isOpen,
   onClose,
-  onAuthSuccess
+  onAuthSuccess,
+  onResetPasswordSuccess
 }) => {
   const [view, setView] = useState<'LOGIN' | 'REGISTER' | 'FORGOT'>('LOGIN');
 
@@ -26,6 +28,9 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
         isOpen={view === 'FORGOT'}
         onClose={onClose}
         onBackToLogin={() => setView('LOGIN')}
+        onResetSuccess={() => {
+          if (onResetPasswordSuccess) onResetPasswordSuccess();
+        }}
       />
 
       {view !== 'FORGOT' && (

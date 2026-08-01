@@ -11,12 +11,14 @@ interface ForgotPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onBackToLogin: () => void;
+  onResetSuccess?: () => void;
 }
 
 export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   isOpen,
   onClose,
-  onBackToLogin
+  onBackToLogin,
+  onResetSuccess
 }) => {
   const {
     step,
@@ -36,7 +38,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <>
-      {/* Real-time SMS Toast Notification */}
       <SmsToast
         show={showSmsToast}
         phone={phone}
@@ -109,7 +110,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             <ResetPassword
               onSuccess={() => {
                 onClose();
-                onBackToLogin();
+                if (onResetSuccess) onResetSuccess();
               }}
             />
           )}
